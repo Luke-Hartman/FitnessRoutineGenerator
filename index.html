@@ -3,41 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello World</title>
+    <title>Get Ready Exercises</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
 </head>
 <body>
-    <h1>Hello World</h1>
-    <div id="data-container"></div>
+    <h1>Get Ready Exercises</h1>
+    <div id="data-container">Loading...</div>
 
     <script>
-        async function loadCSV() {
+        const ALLOWED_EQUIPMENT = ["", "N/A", "Cones", "Ladder", "Chalk"];
+        const TARGET_AREA_ORDER = ["Foot/Ankle", "Legs", "Torso", "Head/Shoulders"];
+
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim());
+            if (lines.length === 0) return [];
+            
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = (values[index] || '').trim();
+                });
+                data.push(row);
+            }
+            
+            return data;
+        }
+
+        function validateGetReady(rows) {
+            const targetAreaCounts = {};
+            for (const row of rows) {
+                if (row['Target Area'] === '') {
+                    return false;
+                }
+                targetAreaCounts[row['Target Area']] = (targetAreaCounts[row['Target Area']] || 0) + 1;
+            }
+
+            if (Object.keys(targetAreaCounts).length > 0) {
+                const maxCount = Math.max(...Object.values(targetAreaCounts));
+                if (maxCount > 2) {
+                    return false;
+                }
+            }
+
+            const familyCounts = {};
+            for (const row of rows) {
+                if (row['Family'] !== '') {
+                    const families = row['Family'].split(',').map(f => f.trim());
+                    for (const family of families) {
+                        familyCounts[family] = (familyCounts[family] || 0) + 1;
+                    }
+                }
+            }
+
+            if (Object.keys(familyCounts).length > 0) {
+                const maxCount = Math.max(...Object.values(familyCounts));
+                if (maxCount > 1) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        function createGetReady(exercises) {
+            const getReadyExercises = exercises.filter(ex => 
+                ex['Sections'].includes('Get Ready') && 
+                ALLOWED_EQUIPMENT.includes(ex['Equipment'])
+            );
+
+            const rows = getReadyExercises;
+            const nRows = 6;
+            const selectedRows = [];
+            
+            while (selectedRows.length < nRows) {
+                const candidate = rows[Math.floor(Math.random() * rows.length)];
+                selectedRows.push(candidate);
+                if (!validateGetReady(selectedRows)) {
+                    selectedRows.pop();
+                }
+            }
+
+            selectedRows.sort((a, b) => {
+                const indexA = TARGET_AREA_ORDER.indexOf(a['Target Area']);
+                const indexB = TARGET_AREA_ORDER.indexOf(b['Target Area']);
+                return indexA - indexB;
+            });
+
+            return selectedRows;
+        }
+
+        function displayTable(data) {
+            if (data.length === 0) {
+                return '<p>No exercises found.</p>';
+            }
+
+            const headers = ['Name', 'Family', 'Formation', 'Target Area', 'Equipment', 'Sections', 'Comments'];
+            let html = '<table><thead><tr>';
+            for (const header of headers) {
+                html += `<th>${header}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+
+            for (const row of data) {
+                html += '<tr>';
+                for (const header of headers) {
+                    html += `<td>${row[header] || ''}</td>`;
+                }
+                html += '</tr>';
+            }
+
+            html += '</tbody></table>';
+            return html;
+        }
+
+        async function loadAndGenerate() {
             try {
-                // Fetch the CSV file
                 const response = await fetch('Strides 360 Fit4Mom Data - Exercises.csv');
                 const csvText = await response.text();
+                const exercises = parseCSV(csvText);
                 
-                // Parse CSV (simple parser - assumes no commas in quoted fields)
-                const lines = csvText.split('\n').filter(line => line.trim());
-                const headers = lines[0].split(',');
-                const data = [];
-                
-                for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',');
-                    const row = {};
-                    headers.forEach((header, index) => {
-                        row[header.trim()] = values[index]?.trim() || '';
-                    });
-                    data.push(row);
-                }
-                
-                // Display the data
+                const getReadyExercises = createGetReady(exercises);
                 const container = document.getElementById('data-container');
-                container.innerHTML = `<h2>Loaded ${data.length} exercises</h2>`;
-                container.innerHTML += `<pre>${JSON.stringify(data.slice(0, 5), null, 2)}</pre>`;
-                container.innerHTML += `<p>... and ${data.length - 5} more</p>`;
-                
-                // You can now use the 'data' array in your JavaScript
-                console.log('CSV Data:', data);
+                container.innerHTML = displayTable(getReadyExercises);
                 
             } catch (error) {
                 console.error('Error loading CSV:', error);
@@ -46,8 +161,7 @@
             }
         }
         
-        // Load CSV when page loads
-        loadCSV();
+        loadAndGenerate();
     </script>
 </body>
 </html>
