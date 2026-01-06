@@ -65,6 +65,19 @@
             overflow: hidden;
             margin-bottom: 20px;
         }
+        .class-type-toggle {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        .class-type-toggle label {
+            margin-right: 20px;
+            font-weight: bold;
+        }
+        .class-type-toggle input[type="radio"] {
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -72,6 +85,17 @@
         <h1 style="float: left; margin: 0;">Fitness Routine Generator</h1>
         <button class="download-button" onclick="downloadSecondsFile()">Download</button>
         <button class="feedback-button" onclick="window.open('https://forms.gle/bez4zu2unfoSehKC9', '_blank')">Feedback</button>
+    </div>
+    <div class="class-type-toggle">
+        <label>Class Type:</label>
+        <label>
+            <input type="radio" name="classType" value="inside" checked onchange="updateClassType()">
+            Inside
+        </label>
+        <label>
+            <input type="radio" name="classType" value="outside" onchange="updateClassType()">
+            Outside
+        </label>
     </div>
     <div id="get-ready-container">Loading...</div>
     <div id="saq-container"></div>
@@ -83,6 +107,7 @@
         let allExercises = [];
         let currentGetReady = [];
         let currentSAQ = [];
+        let classType = 'inside'; // 'inside' or 'outside'
 
         function parseCSV(csvText) {
             const lines = csvText.split('\n').filter(line => line.trim());
@@ -348,6 +373,19 @@
             };
         }
 
+        function updateClassType() {
+            const selected = document.querySelector('input[name="classType"]:checked');
+            classType = selected ? selected.value : 'inside';
+        }
+
+        function getWarmUpName(number) {
+            if (classType === 'outside') {
+                return `Out and Back #${number}`;
+            } else {
+                return `TODO: Open quad #${number}`;
+            }
+        }
+
         function generateSecondsFile() {
             const intervals = [];
 
@@ -360,7 +398,7 @@
             intervals.push(createInterval("Get There", 180, 0));
 
             // First warm-up run (color 8, 240 seconds) - before SAQ/cond blocks
-            intervals.push(createInterval("TODO: Open quad", 240, 8));
+            intervals.push(createInterval(getWarmUpName(1), 240, 8));
 
             // Set Up / Rest (color 6, 60 seconds)
             intervals.push(createInterval("Set Up / Rest", 60, 6));
@@ -386,7 +424,8 @@
                 
                 // After each block, add warm-up and rest
                 // For the last block (block 3, since 0-indexed), we still add warm-up 5 and rest before Relay
-                intervals.push(createInterval("TODO: Open quad", 240, 8));
+                // Number is block + 2 (since #1 is before blocks, then #2, #3, #4, #5)
+                intervals.push(createInterval(getWarmUpName(block + 2), 240, 8));
                 intervals.push(createInterval("Set Up / Rest", 60, 6));
             }
 
