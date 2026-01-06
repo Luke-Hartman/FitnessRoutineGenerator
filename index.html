@@ -292,16 +292,27 @@
                 return '<p>No exercises found.</p>';
             }
 
-            const headers = ['Name', 'Family', 'Formation', 'Target Area', 'Equipment', 'Link', 'Comments'];
+            // Different columns for Get Ready vs SAQ
+            let headers;
+            let headerLabels;
+            if (sectionType === 'get-ready') {
+                headers = ['Name', 'Target Area', 'Link', 'Comments'];
+                headerLabels = headers;
+            } else {
+                headers = ['Name', 'Family', 'Formation', 'Equipment', 'Link', 'Comments'];
+                headerLabels = ['Name', 'Type', 'Formation', 'Equipment', 'Link', 'Comments'];
+            }
+            
             let html = '<table><thead><tr>';
-            for (const header of headers) {
-                html += `<th>${header}</th>`;
+            for (let j = 0; j < headerLabels.length; j++) {
+                html += `<th>${headerLabels[j]}</th>`;
             }
             html += '<th>Action</th></tr></thead><tbody>';
 
             for (let i = 0; i < data.length; i++) {
                 html += `<tr id="${sectionType}-row-${i}">`;
-                for (const header of headers) {
+                for (let j = 0; j < headers.length; j++) {
+                    const header = headers[j];
                     if (header === 'Link' && data[i][header]) {
                         const link = data[i][header].trim();
                         if (link.startsWith('http://') || link.startsWith('https://')) {
