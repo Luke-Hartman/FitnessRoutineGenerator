@@ -7,6 +7,48 @@
 </head>
 <body>
     <h1>Hello World</h1>
+    <div id="data-container"></div>
+
+    <script>
+        async function loadCSV() {
+            try {
+                // Fetch the CSV file
+                const response = await fetch('Strides 360 Fit4Mom Data - Exercises.csv');
+                const csvText = await response.text();
+                
+                // Parse CSV (simple parser - assumes no commas in quoted fields)
+                const lines = csvText.split('\n').filter(line => line.trim());
+                const headers = lines[0].split(',');
+                const data = [];
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',');
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        row[header.trim()] = values[index]?.trim() || '';
+                    });
+                    data.push(row);
+                }
+                
+                // Display the data
+                const container = document.getElementById('data-container');
+                container.innerHTML = `<h2>Loaded ${data.length} exercises</h2>`;
+                container.innerHTML += `<pre>${JSON.stringify(data.slice(0, 5), null, 2)}</pre>`;
+                container.innerHTML += `<p>... and ${data.length - 5} more</p>`;
+                
+                // You can now use the 'data' array in your JavaScript
+                console.log('CSV Data:', data);
+                
+            } catch (error) {
+                console.error('Error loading CSV:', error);
+                document.getElementById('data-container').innerHTML = 
+                    '<p>Error loading CSV file</p>';
+            }
+        }
+        
+        // Load CSV when page loads
+        loadCSV();
+    </script>
 </body>
 </html>
 
