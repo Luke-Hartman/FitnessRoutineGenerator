@@ -292,7 +292,7 @@
                 return '<p>No exercises found.</p>';
             }
 
-            const headers = ['Name', 'Family', 'Formation', 'Target Area', 'Equipment', 'Sections', 'Comments'];
+            const headers = ['Name', 'Family', 'Formation', 'Target Area', 'Equipment', 'Sections', 'Link', 'Comments'];
             let html = '<table><thead><tr>';
             for (const header of headers) {
                 html += `<th>${header}</th>`;
@@ -302,7 +302,16 @@
             for (let i = 0; i < data.length; i++) {
                 html += `<tr id="${sectionType}-row-${i}">`;
                 for (const header of headers) {
-                    html += `<td>${data[i][header] || ''}</td>`;
+                    if (header === 'Link' && data[i][header]) {
+                        const link = data[i][header].trim();
+                        if (link.startsWith('http://') || link.startsWith('https://')) {
+                            html += `<td><a href="${link}" target="_blank" rel="noopener noreferrer">Link</a></td>`;
+                        } else {
+                            html += `<td>${link}</td>`;
+                        }
+                    } else {
+                        html += `<td>${data[i][header] || ''}</td>`;
+                    }
                 }
                 html += `<td><button onclick="refreshRow('${sectionType}', ${i})">Refresh</button></td>`;
                 html += '</tr>';
