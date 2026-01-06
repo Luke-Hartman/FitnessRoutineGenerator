@@ -40,7 +40,7 @@
         button:hover {
             background-color: #45a049;
         }
-        .feedback-button {
+        .feedback-button, .download-button {
             padding: 10px 20px;
             background-color: #4285f4;
             color: white;
@@ -49,10 +49,17 @@
             font-size: 14px;
             cursor: pointer;
             margin-bottom: 20px;
+            margin-left: 10px;
             float: right;
         }
-        .feedback-button:hover {
+        .feedback-button:hover, .download-button:hover {
             background-color: #357ae8;
+        }
+        .download-button {
+            background-color: #34a853;
+        }
+        .download-button:hover {
+            background-color: #2d8f47;
         }
         .header-container {
             overflow: hidden;
@@ -63,6 +70,7 @@
 <body>
     <div class="header-container">
         <h1 style="float: left; margin: 0;">Fitness Routine Generator</h1>
+        <button class="download-button" onclick="downloadSecondsFile()">Download</button>
         <button class="feedback-button" onclick="window.open('https://forms.gle/bez4zu2unfoSehKC9', '_blank')">Feedback</button>
     </div>
     <div id="get-ready-container">Loading...</div>
@@ -139,7 +147,7 @@
             );
 
             const rows = getReadyExercises;
-            const nRows = 6;
+            const nRows = 5;
             const selectedRows = [];
             
             while (selectedRows.length < nRows) {
@@ -316,6 +324,115 @@
         function updateSAQDisplay() {
             const saqContainer = document.getElementById('saq-container');
             saqContainer.innerHTML = '<h2>SAQ Exercises</h2>' + displayTable(currentSAQ, 'saq');
+        }
+
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function createInterval(name, duration, color) {
+            return {
+                color: color,
+                count: "",
+                duration: duration,
+                halfwayAlert: false,
+                identifier: generateUUID(),
+                name: name,
+                rest: false,
+                split: false,
+                vibration: false
+            };
+        }
+
+        function generateSecondsFile() {
+            const intervals = [];
+
+            // Get Ready section (color 5, 30 seconds each)
+            for (const exercise of currentGetReady) {
+                intervals.push(createInterval(`Get Ready ${exercise['Name']}`, 30, 5));
+            }
+
+            // Get There transition (color 0, 180 seconds)
+            intervals.push(createInterval("Get There", 180, 0));
+
+            // First warm-up run (color 8, 240 seconds) - before SAQ/cond blocks
+            intervals.push(createInterval("Tap Backs And Lunge, Icky Shuffle, 4 Butt Kickers Front To Back, Run Out And In", 240, 8));
+
+            // Set Up / Rest (color 6, 60 seconds)
+            intervals.push(createInterval("Set Up / Rest", 60, 6));
+
+            // 4 blocks of SAQ/Conditioning (SAQ: color 2, 60 seconds; Conditioning: color 3, 60 seconds)
+            // Each block: SAQ, Cond, SAQ, Cond, Warm-up, Rest
+            // Total: 8 SAQ exercises and 8 Conditioning exercises
+            const numBlocks = 4;
+            const saqPerBlock = 2;
+            const totalSAQNeeded = numBlocks * saqPerBlock;
+            
+            // Use available SAQ exercises, repeat if needed to get 8 total
+            for (let block = 0; block < numBlocks; block++) {
+                // First SAQ and Cond in this block
+                const saqIndex1 = (block * saqPerBlock) % currentSAQ.length;
+                intervals.push(createInterval(`SAQ ${currentSAQ[saqIndex1]['Name']}`, 60, 2));
+                intervals.push(createInterval("TODO: Conditioning Exercise", 60, 3));
+                
+                // Second SAQ and Cond in this block
+                const saqIndex2 = (block * saqPerBlock + 1) % currentSAQ.length;
+                intervals.push(createInterval(`SAQ ${currentSAQ[saqIndex2]['Name']}`, 60, 2));
+                intervals.push(createInterval("TODO: Conditioning Exercise", 60, 3));
+                
+                // After each block, add warm-up and rest
+                // For the last block (block 3, since 0-indexed), we still add warm-up 5 and rest before Relay
+                intervals.push(createInterval("Tap Backs And Lunge, Icky Shuffle, 4 Butt Kickers Front To Back, Run Out And In", 240, 8));
+                intervals.push(createInterval("Set Up / Rest", 60, 6));
+            }
+
+            // TODO: Add Open Q section here
+            // intervals.push(createInterval("TODO: Open Q Exercise", duration, color));
+
+            // TODO: Add Relay section (color 4, 180 seconds)
+            intervals.push(createInterval("TODO: Relay Exercise", 180, 4));
+
+            // Celebrate & Recover (color 6, 60 seconds)
+            intervals.push(createInterval("Celebrate & Recover", 60, 6));
+
+            // Get Back transition (color 0, 180 seconds)
+            intervals.push(createInterval("Get Back", 180, 0));
+
+            // TODO: Add Goodbye/Stretch section (color 5, 180 seconds)
+            intervals.push(createInterval("TODO: Goodbye/Stretch Exercise", 180, 5));
+
+            const pack = {
+                _type: "pack",
+                identifier: generateUUID(),
+                items: [{
+                    intervals: intervals,
+                    identifier: generateUUID(),
+                    name: "Generated Fitness Routine",
+                    numberOfSets: intervals.length,
+                    soundScheme: 0,
+                    type: 0
+                }],
+                name: "Shared Timers"
+            };
+
+            return JSON.stringify(pack, null, 0);
+        }
+
+        function downloadSecondsFile() {
+            const content = generateSecondsFile();
+            const blob = new Blob([content], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'fitness-routine.seconds';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         async function loadAndGenerate() {
