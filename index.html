@@ -28,6 +28,18 @@
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
+        button {
+            padding: 6px 12px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -38,6 +50,10 @@
     <script>
         const ALLOWED_EQUIPMENT = ["", "N/A", "Cones", "Ladder", "Chalk"];
         const TARGET_AREA_ORDER = ["Foot/Ankle", "Legs", "Torso", "Head/Shoulders"];
+        
+        let allExercises = [];
+        let currentGetReady = [];
+        let currentSAQ = [];
 
         function parseCSV(csvText) {
             const lines = csvText.split('\n').filter(line => line.trim());
@@ -185,7 +201,7 @@
             return selectedRows;
         }
 
-        function displayTable(data) {
+        function displayTable(data, sectionType) {
             if (data.length === 0) {
                 return '<p>No exercises found.</p>';
             }
@@ -195,13 +211,14 @@
             for (const header of headers) {
                 html += `<th>${header}</th>`;
             }
-            html += '</tr></thead><tbody>';
+            html += '<th>Action</th></tr></thead><tbody>';
 
-            for (const row of data) {
-                html += '<tr>';
+            for (let i = 0; i < data.length; i++) {
+                html += `<tr id="${sectionType}-row-${i}">`;
                 for (const header of headers) {
-                    html += `<td>${row[header] || ''}</td>`;
+                    html += `<td>${data[i][header] || ''}</td>`;
                 }
+                html += `<td><button onclick="refreshRow('${sectionType}', ${i})">Refresh</button></td>`;
                 html += '</tr>';
             }
 
@@ -209,19 +226,90 @@
             return html;
         }
 
+        function refreshGetReadyRow(index) {
+            const getReadyExercises = allExercises.filter(ex => 
+                ex['Name'] && ex['Name'].trim() !== '' &&
+                ex['Sections'].includes('Get Ready') && 
+                ALLOWED_EQUIPMENT.includes(ex['Equipment'])
+            );
+
+            const currentTargetArea = currentGetReady[index]['Target Area'];
+            let attempts = 0;
+            const maxAttempts = 100;
+
+            while (attempts < maxAttempts) {
+                const candidate = getReadyExercises[Math.floor(Math.random() * getReadyExercises.length)];
+                const testRows = [...currentGetReady];
+                testRows[index] = candidate;
+
+                if (validateGetReady(testRows)) {
+                    currentGetReady[index] = candidate;
+                    currentGetReady.sort((a, b) => {
+                        const indexA = TARGET_AREA_ORDER.indexOf(a['Target Area']);
+                        const indexB = TARGET_AREA_ORDER.indexOf(b['Target Area']);
+                        return indexA - indexB;
+                    });
+                    updateGetReadyDisplay();
+                    return;
+                }
+                attempts++;
+            }
+        }
+
+        function refreshSAQRow(index) {
+            const saqExercises = allExercises.filter(ex => 
+                ex['Name'] && ex['Name'].trim() !== '' &&
+                ex['Sections'].includes('SAQ')
+            );
+
+            let attempts = 0;
+            const maxAttempts = 100;
+
+            while (attempts < maxAttempts) {
+                const candidate = saqExercises[Math.floor(Math.random() * saqExercises.length)];
+                const testRows = [...currentSAQ];
+                testRows[index] = candidate;
+
+                if (validateSAQ(testRows)) {
+                    currentSAQ[index] = candidate;
+                    updateSAQDisplay();
+                    return;
+                }
+                attempts++;
+            }
+        }
+
+        function refreshRow(sectionType, index) {
+            if (sectionType === 'get-ready') {
+                refreshGetReadyRow(index);
+            } else if (sectionType === 'saq') {
+                refreshSAQRow(index);
+            }
+        }
+
+        function updateGetReadyDisplay() {
+            const getReadyContainer = document.getElementById('get-ready-container');
+            getReadyContainer.innerHTML = '<h2>Get Ready Exercises</h2>' + displayTable(currentGetReady, 'get-ready');
+        }
+
+        function updateSAQDisplay() {
+            const saqContainer = document.getElementById('saq-container');
+            saqContainer.innerHTML = '<h2>SAQ Exercises</h2>' + displayTable(currentSAQ, 'saq');
+        }
+
         async function loadAndGenerate() {
             try {
                 const response = await fetch('Strides 360 Fit4Mom Data - Exercises.csv');
                 const csvText = await response.text();
-                const exercises = parseCSV(csvText);
+                allExercises = parseCSV(csvText);
                 
-                const getReadyExercises = createGetReady(exercises);
+                currentGetReady = createGetReady(allExercises);
                 const getReadyContainer = document.getElementById('get-ready-container');
-                getReadyContainer.innerHTML = '<h2>Get Ready Exercises</h2>' + displayTable(getReadyExercises);
+                getReadyContainer.innerHTML = '<h2>Get Ready Exercises</h2>' + displayTable(currentGetReady, 'get-ready');
                 
-                const saqExercises = createSAQ(exercises);
+                currentSAQ = createSAQ(allExercises);
                 const saqContainer = document.getElementById('saq-container');
-                saqContainer.innerHTML = '<h2>SAQ Exercises</h2>' + displayTable(saqExercises);
+                saqContainer.innerHTML = '<h2>SAQ Exercises</h2>' + displayTable(currentSAQ, 'saq');
                 
             } catch (error) {
                 console.error('Error loading CSV:', error);
