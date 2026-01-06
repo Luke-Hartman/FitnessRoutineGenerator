@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Get Ready Exercises</title>
+    <title>Fitness Routine Generator</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -31,8 +31,9 @@
     </style>
 </head>
 <body>
-    <h1>Get Ready Exercises</h1>
-    <div id="data-container">Loading...</div>
+    <h1>Fitness Routine Generator</h1>
+    <div id="get-ready-container">Loading...</div>
+    <div id="saq-container"></div>
 
     <script>
         const ALLOWED_EQUIPMENT = ["", "N/A", "Cones", "Ladder", "Chalk"];
@@ -95,6 +96,7 @@
 
         function createGetReady(exercises) {
             const getReadyExercises = exercises.filter(ex => 
+                ex['Name'] && ex['Name'].trim() !== '' &&
                 ex['Sections'].includes('Get Ready') && 
                 ALLOWED_EQUIPMENT.includes(ex['Equipment'])
             );
@@ -116,6 +118,69 @@
                 const indexB = TARGET_AREA_ORDER.indexOf(b['Target Area']);
                 return indexA - indexB;
             });
+
+            return selectedRows;
+        }
+
+        function validateSAQ(rows) {
+            const formationCounts = {};
+            for (const row of rows) {
+                if (row['Formation'] === '') {
+                    return false;
+                }
+                formationCounts[row['Formation']] = (formationCounts[row['Formation']] || 0) + 1;
+            }
+
+            if (Object.keys(formationCounts).length > 0) {
+                const maxCount = Math.max(...Object.values(formationCounts));
+                if (maxCount > 2) {
+                    return false;
+                }
+            }
+
+            const familyCounts = {};
+            for (const row of rows) {
+                if (row['Family'] !== '') {
+                    const families = row['Family'].split(',').map(f => f.trim());
+                    for (const family of families) {
+                        familyCounts[family] = (familyCounts[family] || 0) + 1;
+                    }
+                }
+            }
+
+            if (Object.keys(familyCounts).length > 0) {
+                const maxCount = Math.max(...Object.values(familyCounts));
+                if (maxCount > 1) {
+                    return false;
+                }
+            }
+
+            for (let i = 0; i < rows.length - 1; i++) {
+                if (rows[i]['Formation'] === rows[i + 1]['Formation']) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        function createSAQ(exercises) {
+            const saqExercises = exercises.filter(ex => 
+                ex['Name'] && ex['Name'].trim() !== '' &&
+                ex['Sections'].includes('SAQ')
+            );
+
+            const rows = saqExercises;
+            const nRows = 4;
+            const selectedRows = [];
+            
+            while (selectedRows.length < nRows) {
+                const candidate = rows[Math.floor(Math.random() * rows.length)];
+                selectedRows.push(candidate);
+                if (!validateSAQ(selectedRows)) {
+                    selectedRows.pop();
+                }
+            }
 
             return selectedRows;
         }
@@ -151,12 +216,16 @@
                 const exercises = parseCSV(csvText);
                 
                 const getReadyExercises = createGetReady(exercises);
-                const container = document.getElementById('data-container');
-                container.innerHTML = displayTable(getReadyExercises);
+                const getReadyContainer = document.getElementById('get-ready-container');
+                getReadyContainer.innerHTML = '<h2>Get Ready Exercises</h2>' + displayTable(getReadyExercises);
+                
+                const saqExercises = createSAQ(exercises);
+                const saqContainer = document.getElementById('saq-container');
+                saqContainer.innerHTML = '<h2>SAQ Exercises</h2>' + displayTable(saqExercises);
                 
             } catch (error) {
                 console.error('Error loading CSV:', error);
-                document.getElementById('data-container').innerHTML = 
+                document.getElementById('get-ready-container').innerHTML = 
                     '<p>Error loading CSV file</p>';
             }
         }
